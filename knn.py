@@ -4,6 +4,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from ucimlrepo import fetch_ucirepo
+from heapq import nsmallest
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 sns.set(style="white", color_codes=True)
@@ -42,27 +44,26 @@ def euclid(x, y):
 
 
 def knn(data, test, k):
-    neighbors = [[] for _ in range(len(test))]
     test_copy = test.copy()
 
-    for nn_index, test_row in test_copy.iterrows():
+    for nn_index, test_row in tqdm(test_copy.iterrows(), total=len(test_copy)):
         data_copy = data.copy()
+        distance = {}
 
-        while len(neighbors[nn_index]) < k:
-            min_index = -1
-            min_val = float("inf")
+        for dist_index, data_row in data_copy.iterrows():
+            distance[dist_index] = euclid(data_row.drop('class'), test_row.drop('class'))
 
-            for index, row in data_copy.iterrows():
-                new_val = euclid(test_row.drop('class').values, row.drop('class').values)
-                if new_val < min_val:
-                    min_val = new_val
-                    min_index = index
-
-            if min_index != -1:
-                data_copy.drop(min_index, inplace=True)
-                neighbors[nn_index].append(min_index)
-
-        test_copy.at[nn_index, 'class'] = count_occ(neighbors[nn_index], data)
+        test_copy.at[nn_index, 'class'] = count_occ(
+                                            list(
+                                                dict(
+                                                    sorted(
+                                                        distance.items(),
+                                                        key=lambda neighbor: neighbor[1]
+                                                    )[:9]
+                                                ).keys()
+                                            ),
+                                            data
+        )
     return test_copy
 
 
