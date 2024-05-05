@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore")
 sns.set(style="white", color_codes=True)
 
+
 def col_perceptron(data, weights, eta, maxiter):
     for __ in range(maxiter):
         exit_flag = True
