@@ -1,39 +1,58 @@
 import pandas as pd
-from ucimlrepo import fetch_ucirepo
-import warnings
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from ucimlrepo import fetch_ucirepo
+from tqdm import tqdm
 
-warnings.filterwarnings("ignore")
 sns.set(style="white", color_codes=True)
 
 
 def col_perceptron(data, weights, eta, maxiter):
-    for __ in range(maxiter):
+    """
+    collate all the values for some given perceptron
+    :param data: the original dataframe [sepal length, sepal width, petal length, petal width, classification (target)]
+    :param weights: list of initial weights [bias, sl_param, sw_param, pl_param, pw_param]
+    :param eta: same eta from gradient descent, just a scaling parameter
+    :param maxiter: maximal number of iterations this function should run, regardless of convergence
+    :return: the updated list of weights for the perceptron, again, regardless of convergence
+    """
+    # ensure we cap the convergence
+    for __ in tqdm(range(maxiter), total=maxiter):
+        # if exit flag is true at the end of a sweep through
+        # all the rows, then there were no updates, and thus
+        # the perceptron converged to some linear function
+        # that linearly separates the data
         exit_flag = True
 
         for _, row in data.iterrows():
+            # substitute values to check for update
             o = 1 * weights[0]
             for index, x in enumerate(row.drop('class').values):
                 o += (weights[index + 1] * x)
 
+            # if 0 then negative, otherwise just return sign
             if o == 0:
                 o = -1
             else:
                 o = o / np.abs(o)  # if this o is trivially small it could be a problem
 
+            # if this is 0 then there is no need to update,
+            # as it is classifying correctly
             update = int(row['class']) - o
+
+            # otherwise update and flag false
             if update != 0:
                 exit_flag = False
                 weights[0] += eta * update
                 for index, x in enumerate(row.drop('class').values):
                     weights[index + 1] += eta * update * x
 
+        # convergence
         if exit_flag:
             return weights
 
-    print("did not converge")
+    # non-convergence
     return weights
 
 
@@ -58,25 +77,46 @@ p0_weights = col_perceptron(p0_data, p0_weights, eta=0.1, maxiter=5000)
 p1_weights = col_perceptron(p1_data, p1_weights, eta=0.1, maxiter=5000)
 p2_weights = col_perceptron(p2_data, p2_weights, eta=0.1, maxiter=5000)
 
-testexamples = pd.DataFrame(
-    {
-        'sepal length': [5.4, 6.0, 6.8, 5.2, 5.9],
-        'sepal width': [3.3, 2.7, 3.4, 4.0, 2.9],
-        'petal length': [1.6, 4.2, 6.0, 5.0, 4.5],
-        'petal width': [0.4, 1.2, 2.4, 0.3, 1.4],
-        'class': ['Iris-test', 'Iris-test', 'Iris-test', 'Iris-test', 'Iris-test']
-    }
-)
+# create some fourth-dimensional volume that
+# has all the important ranges for the flowers
+# in every direction, increasing by 0.2 each
+# point. aptly name it a 'hyperpetal' because
+# you're a nerd, and you think you're funny.
+info_dict = {
+    'sepal length': [],
+    'sepal width': [],
+    'petal length': [],
+    'petal width': [],
+    'class': []
+}
 
-plot_test = pd.concat([original, testexamples])
-sns.pairplot(plot_test, hue='class', height=2, palette=sns.color_palette("tab10"))
-plt.show()
+# sepal len: [4.2 8.0]
+# sepal wid: [2.0 4.4]
+# petal len: [1.0 7.0]
+# petal wid: [0.0 2.6]
+for x in range(21, 41):
+    for y in range(10, 22):
+        for z in range(5, 36):
+            for a in range(14):
+                info_dict['sepal length'].append(x / 5.0)
+                info_dict['sepal width'].append(y / 5.0)
+                info_dict['petal length'].append(z / 5.0)
+                info_dict['petal width'].append(a / 5.0)
+                info_dict['class'].append(0)
 
-for dfindex, row in testexamples.iterrows():
+hyperpetal = pd.DataFrame(info_dict)
+
+# iterate over the entire 4D object and let the perceptron
+# decide what flower each point should be
+# (this is so computationally inefficient, I apologize)
+for dfindex, row in hyperpetal.iterrows():
+    # bias
     p0 = p0_weights[0]
     p1 = p1_weights[0]
     p2 = p2_weights[0]
 
+    # account for bias parameter and multiply each row value
+    # with its corresponding perceptron parameter weight
     for index, x in enumerate(row.drop('class').values):
         p0 += p0_weights[index + 1] * x
         p1 += p1_weights[index + 1] * x
@@ -84,13 +124,17 @@ for dfindex, row in testexamples.iterrows():
 
     maxval = max(p0, p1, p2)
 
+    # classify
     if p0 == maxval:
-        testexamples.at[dfindex, 'class'] = 'Iris-setosa'
+        hyperpetal.at[dfindex, 'class'] = 'Iris-setosa'
     elif p1 == maxval:
-        testexamples.at[dfindex, 'class'] = 'Iris-versicolor'
+        hyperpetal.at[dfindex, 'class'] = 'Iris-versicolor'
     else:
-        testexamples.at[dfindex, 'class'] = 'Iris-virginica'
+        hyperpetal.at[dfindex, 'class'] = 'Iris-virginica'
 
-plot_test = pd.concat([original, testexamples])
-sns.pairplot(plot_test, hue='class', height=2, palette=sns.color_palette("tab10"))
+# legend is out of order otherwise
+hyperpetal = hyperpetal.sort_values('class')
+
+# plot
+sns.pairplot(hyperpetal, hue='class', height=2, palette=sns.color_palette("tab10"))
 plt.show()

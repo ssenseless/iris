@@ -8,5 +8,6 @@ sns.set(style="white", color_codes=True)
 iris = fetch_ucirepo(id=53)
 originaldf = iris.data.original
 
+# plot data
 sns.pairplot(originaldf, hue='class', height=2, palette=sns.color_palette("tab10"))
 plt.show()
