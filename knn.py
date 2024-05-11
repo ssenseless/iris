@@ -119,7 +119,7 @@ for x in range(21, 41):
 
 # perform k-nearest neighbors
 hyperpetal = pd.DataFrame(info_dict)
-test_examples = knn(original_data, hyperpetal, 9)
+test_examples = knn(original_data, hyperpetal, 5)
 
 # plot
 sns.pairplot(test_examples, hue='class', height=2, palette=sns.color_palette("tab10"))
